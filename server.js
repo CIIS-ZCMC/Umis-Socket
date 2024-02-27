@@ -23,11 +23,49 @@ io.on("connection", (socket) => {
     console.log("User disconnected");
   });
 
-  socket.on("new-division", () => {
-    console.log("New division");
+  socket.on("division", (data) => {
     if (socket) {
-      // Broadcast the "new-division" event to all clients except the one that triggered it
-      socket.broadcast.emit("new-division");
+      socket.broadcast.emit("division", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  socket.on("department", (data) => {
+    if (socket) {
+      socket.broadcast.emit("department", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  socket.on("section", (data) => {
+    if (socket) {
+      socket.broadcast.emit("section", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  socket.on("unit", (data) => {
+    if (socket) {
+      socket.broadcast.emit("unit", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  socket.on("designation", (data) => {
+    if (socket) {
+      socket.broadcast.emit("designation", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  socket.on("plantilla", (data) => {
+    if (socket) {
+      socket.broadcast.emit("plantilla", data);
     } else {
       console.log("Socket is undefined");
     }
