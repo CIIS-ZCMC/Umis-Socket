@@ -7,6 +7,7 @@ const cors = require("cors");
 const port = process.env.SERVER_PORT;
 const app = express();
 const server = http.createServer(app);
+
 const io = socketIo(server, {
   cors: {
     origin: process.env.ORIGIN_URL, // Replace with your client's origin
@@ -26,6 +27,7 @@ io.on("connection", (socket) => {
   socket.on("division", (data) => {
     if (socket) {
       socket.broadcast.emit("division", data);
+      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -34,6 +36,7 @@ io.on("connection", (socket) => {
   socket.on("department", (data) => {
     if (socket) {
       socket.broadcast.emit("department", data);
+      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -42,6 +45,7 @@ io.on("connection", (socket) => {
   socket.on("section", (data) => {
     if (socket) {
       socket.broadcast.emit("section", data);
+      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -50,6 +54,7 @@ io.on("connection", (socket) => {
   socket.on("unit", (data) => {
     if (socket) {
       socket.broadcast.emit("unit", data);
+      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -58,6 +63,7 @@ io.on("connection", (socket) => {
   socket.on("designation", (data) => {
     if (socket) {
       socket.broadcast.emit("designation", data);
+      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -66,6 +72,7 @@ io.on("connection", (socket) => {
   socket.on("plantilla", (data) => {
     if (socket) {
       socket.broadcast.emit("plantilla", data);
+      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
