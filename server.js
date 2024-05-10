@@ -77,6 +77,46 @@ io.on("connection", (socket) => {
       console.log("Socket is undefined");
     }
   });
+
+  //Leave application and request
+  socket.on("leave-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("leave-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  //Official business
+  socket.on("official-business-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("official-business-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  //Official time
+  socket.on("official-time-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("official-time-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  //cto
+  socket.on("cto-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("cto-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
 });
 
 server.listen(port, () => {
