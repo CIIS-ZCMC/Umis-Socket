@@ -77,6 +77,28 @@ io.on("connection", (socket) => {
       console.log("Socket is undefined");
     }
   });
+
+  // PERSONAL INFORMATION
+  socket.on("personal-information", (data) => {
+    if (socket) {
+      socket.broadcast.emit("personal-information", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  // UPDATE REQUEST
+  socket.on("update-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("update-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  // BROADCAST = Global except sender
 });
 
 server.listen(port, () => {
