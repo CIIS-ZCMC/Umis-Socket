@@ -78,17 +78,17 @@ io.on("connection", (socket) => {
     }
   });
 
-  // PERSONAL INFORMATION
-  socket.on("personal-information", (data) => {
+  // Leave application and request
+  socket.on("leave-request", (data) => {
     if (socket) {
-      socket.broadcast.emit("personal-information", data);
+      socket.broadcast.emit("leave-request", data);
       socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
   });
 
-  // UPDATE REQUEST
+  // Update request
   socket.on("update-request", (data) => {
     if (socket) {
       socket.broadcast.emit("update-request", data);
@@ -98,7 +98,35 @@ io.on("connection", (socket) => {
     }
   });
 
-  // BROADCAST = Global except sender
+  //Official business
+  socket.on("official-business-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("official-business-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  //Official time
+  socket.on("official-time-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("official-time-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  //cto
+  socket.on("cto-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("cto-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
 });
 
 server.listen(port, () => {
