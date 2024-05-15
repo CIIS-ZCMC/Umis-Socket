@@ -27,8 +27,7 @@ io.on("connection", (socket) => {
   socket.on("division", (data) => {
     if (socket) {
       socket.broadcast.emit("division", data);
-      socket.broadcast.emit("sidebarnotification", data);
-    } else {
+    } else {  
       console.log("Socket is undefined");
     }
   });
@@ -36,7 +35,6 @@ io.on("connection", (socket) => {
   socket.on("department", (data) => {
     if (socket) {
       socket.broadcast.emit("department", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -45,7 +43,6 @@ io.on("connection", (socket) => {
   socket.on("section", (data) => {
     if (socket) {
       socket.broadcast.emit("section", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -54,7 +51,6 @@ io.on("connection", (socket) => {
   socket.on("unit", (data) => {
     if (socket) {
       socket.broadcast.emit("unit", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -63,7 +59,6 @@ io.on("connection", (socket) => {
   socket.on("designation", (data) => {
     if (socket) {
       socket.broadcast.emit("designation", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -72,7 +67,6 @@ io.on("connection", (socket) => {
   socket.on("plantilla", (data) => {
     if (socket) {
       socket.broadcast.emit("plantilla", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -82,7 +76,6 @@ io.on("connection", (socket) => {
   socket.on("leave-request", (data) => {
     if (socket) {
       socket.broadcast.emit("leave-request", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -92,7 +85,6 @@ io.on("connection", (socket) => {
   socket.on("update-request", (data) => {
     if (socket) {
       socket.broadcast.emit("update-request", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -102,7 +94,6 @@ io.on("connection", (socket) => {
   socket.on("official-business-request", (data) => {
     if (socket) {
       socket.broadcast.emit("official-business-request", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -112,7 +103,6 @@ io.on("connection", (socket) => {
   socket.on("official-time-request", (data) => {
     if (socket) {
       socket.broadcast.emit("official-time-request", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
@@ -122,7 +112,6 @@ io.on("connection", (socket) => {
   socket.on("cto-request", (data) => {
     if (socket) {
       socket.broadcast.emit("cto-request", data);
-      socket.broadcast.emit("sidebarnotification", data);
     } else {
       console.log("Socket is undefined");
     }
