@@ -138,6 +138,16 @@ io.on("connection", (socket) => {
     }
   });
 
+  //cto
+  socket.on("mone-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("mone-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
   while (messageQueue.length > 0) {
     console.log("Queue Task Trigered.");
     const queuedMessage = messageQueue.shift();
