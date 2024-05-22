@@ -127,6 +127,16 @@ io.on("connection", (socket) => {
       console.log("Socket is undefined");
     }
   });
+
+  //cto
+  socket.on("mone-request", (data) => {
+    if (socket) {
+      socket.broadcast.emit("mone-request", data);
+      socket.broadcast.emit("sidebarnotification", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
 });
 
 server.listen(port, () => {
