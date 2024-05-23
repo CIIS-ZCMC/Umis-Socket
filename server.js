@@ -164,6 +164,7 @@ app.post("/notification", (req, res) => {
 
   if (globalIO) {
     globalIO.emit(`notifications-${body.id}`, body.data);
+    console.log(body);
     res.status(200).send("Message triggered successfully");
   } else {
     console.log("Socket connection not established yet. Queuing message...");
