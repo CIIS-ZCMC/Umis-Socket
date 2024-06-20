@@ -40,6 +40,16 @@ io.on("connection", (socket) => {
     console.log("User disconnected");
   });
 
+  // FREEDOM WALL
+  socket.on("freedom-wall", (data) => {
+    if (socket) {
+      socket.broadcast.emit("freedom-wall", data);
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
+  // AREAS
   socket.on("division", (data) => {
     if (socket) {
       socket.broadcast.emit("division", data);
