@@ -183,6 +183,48 @@ app.post("/notification", (req, res) => {
   }
 });
 
+app.post("/pr-monitoring-transaction", (req, res) => {
+  const body = req.body;
+
+  if (globalIO) {
+    globalIO.emit(`transaction`, body.data);
+    console.log(body);
+    res.status(200).send("Message triggered successfully");
+  } else {
+    console.log("Socket connection not established yet. Queuing message...");
+    messageQueue.push({ event: "notifications", data: body });
+    res.status(200).send("Message queued successfully");
+  }
+});
+
+app.post("/pr-monitoring-all-manage-transaction", (req, res) => {
+  const body = req.body;
+
+  if (globalIO) {
+    globalIO.emit(`all-manage-transaction`, body.data);
+    console.log(body);
+    res.status(200).send("Message triggered successfully");
+  } else {
+    console.log("Socket connection not established yet. Queuing message...");
+    messageQueue.push({ event: "notifications", data: body });
+    res.status(200).send("Message queued successfully");
+  }
+});
+
+app.post("/pr-monitoring-transaction-data", (req, res) => {
+  const body = req.body;
+
+  if (globalIO) {
+    globalIO.emit(`transaction-data`, body.data);
+    console.log(body);
+    res.status(200).send("Message triggered successfully");
+  } else {
+    console.log("Socket connection not established yet. Queuing message...");
+    messageQueue.push({ event: "notifications", data: body });
+    res.status(200).send("Message queued successfully");
+  }
+});
+
 server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
