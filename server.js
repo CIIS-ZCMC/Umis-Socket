@@ -16,7 +16,12 @@ let messageQueue = [];
 
 const io = socketIo(server, {
   cors: {
-    origin: process.env.ORIGIN_CLIENT, // Replace with your client's origin
+    origin: [
+      process.env.ORIGIN_PORTAL_CLIENT,
+      process.env.ORIGIN_PR_MONITORING_CLIENT,
+      process.env.ORIGIN_PR_MONITORING_SERVER,
+      process.env.ORIGIN_SERVER,
+    ], // Replace with your client's origin
     methods: ["GET", "POST"], // Add allowed HTTP methodsc
     credentials: true,
   },
@@ -194,7 +199,7 @@ app.post("/pr-monitoring", (req, res) => {
     // Data to be sent to all listener
     const data = body.data.data;
 
-    globalIO.emit(event, data);
+    globalIO.emit("transaction", data);
 
     res.status(200).send("Message triggered successfully");
   } else {
