@@ -184,40 +184,18 @@ app.post("/notification", (req, res) => {
 });
 
 // PR MONITORING END POINT
-app.post("/pr-monitoring-transaction", (req, res) => {
+app.post("/pr-monitoring", (req, res) => {
   const body = req.body;
 
   if (globalIO) {
-    globalIO.emit(`transaction`, body.data);
-    console.log(body);
-    res.status(200).send("Message triggered successfully");
-  } else {
-    console.log("Socket connection not established yet. Queuing message...");
-    messageQueue.push({ event: "notifications", data: body });
-    res.status(200).send("Message queued successfully");
-  }
-});
+    // Target socket event
+    const event = body.data.event;
 
-app.post("/pr-monitoring-all-manage-transaction", (req, res) => {
-  const body = req.body;
+    // Data to be sent to all listener
+    const data = body.data.data;
 
-  if (globalIO) {
-    globalIO.emit(`all-manage-transaction`, body.data);
-    console.log(body);
-    res.status(200).send("Message triggered successfully");
-  } else {
-    console.log("Socket connection not established yet. Queuing message...");
-    messageQueue.push({ event: "notifications", data: body });
-    res.status(200).send("Message queued successfully");
-  }
-});
+    globalIO.emit(event, data);
 
-app.post("/pr-monitoring-transaction-data", (req, res) => {
-  const body = req.body;
-
-  if (globalIO) {
-    globalIO.emit(`transaction-data`, body.data);
-    console.log(body);
     res.status(200).send("Message triggered successfully");
   } else {
     console.log("Socket connection not established yet. Queuing message...");
