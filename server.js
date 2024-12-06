@@ -191,6 +191,7 @@ app.post("/notification", (req, res) => {
 // PR MONITORING END POINT
 app.post("/pr-monitoring", (req, res) => {
   const body = req.body;
+  console.log("DATA RECEIVE FROM PR: ", body);
 
   if (globalIO) {
     // Target socket event
