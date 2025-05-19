@@ -224,7 +224,7 @@ app.post("/pnrs-notifications", (req, res) => {
     // Data to be sent to all listener
     const data = body.data;
 
-    globalIO.emit("referral-notify", data);
+    globalIO.emit(body.event, data);
 
     res.status(200).send("Message triggered successfully");
     console.log("Successfully emit data");
