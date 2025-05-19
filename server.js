@@ -7,7 +7,7 @@ const cors = require("cors");
 /** Models */
 // const Biolog = require("./models/Biolog");
 
-const port = process.env.SERVER_PORT;
+const port = process.env.SERVER_PORT ?? 3025;
 const app = express();
 const server = http.createServer(app);
 
@@ -17,6 +17,8 @@ let messageQueue = [];
 const io = socketIo(server, {
   cors: {
     origin: [
+      process.env.PNRS_CLIENT,
+      process.env.PNRS_SERVER,
       process.env.ORIGIN_PORTAL_CLIENT,
       process.env.ORIGIN_PR_MONITORING_CLIENT,
       process.env.ORIGIN_PR_MONITORING_SERVER,
@@ -203,6 +205,29 @@ app.post("/pr-monitoring", (req, res) => {
     globalIO.emit("transaction", data);
 
     res.status(200).send("Message triggered successfully");
+  } else {
+    console.log("Socket connection not established yet. Queuing message...");
+    messageQueue.push({ event: "notifications", data: body });
+    res.status(200).send("Message queued successfully");
+  }
+});
+
+// PR MONITORING END POINT
+app.post("/pnrs-notifications", (req, res) => {
+  const body = req.body;
+  console.log("DATA RECEIVE FROM PNRS: ", body);
+
+  if (globalIO) {
+    // Target socket event
+    const event = body.data.event;
+
+    // Data to be sent to all listener
+    const data = body.data;
+
+    globalIO.emit("referral-notify", data);
+
+    res.status(200).send("Message triggered successfully");
+    console.log("Successfully emit data");
   } else {
     console.log("Socket connection not established yet. Queuing message...");
     messageQueue.push({ event: "notifications", data: body });
