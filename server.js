@@ -165,6 +165,16 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ERP events
+  socket.on("erp-notification", (data) => {
+    if (socket) {
+      socket.broadcast.emit("erp-notification", data);
+      console.log("Broadcasting ERP notification data");
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
   while (messageQueue.length > 0) {
     console.log("Queue Task Trigered.");
     const queuedMessage = messageQueue.shift();
@@ -212,7 +222,7 @@ app.post("/pr-monitoring", (req, res) => {
   }
 });
 
-// PR MONITORING END POINT
+// PNRS MONITORING END POINT
 app.post("/pnrs-notifications", (req, res) => {
   const body = req.body;
   console.log("DATA RECEIVE FROM PNRS: ", body);
@@ -232,6 +242,26 @@ app.post("/pnrs-notifications", (req, res) => {
     console.log("Socket connection not established yet. Queuing message...");
     messageQueue.push({ event: "notifications", data: body });
     res.status(200).send("Message queued successfully");
+  }
+});
+
+// ERP ENDPOINT
+app.post("/erp-notifications", (req, res) => {
+  const body = req.body;
+  console.log("DATA RECEIVED FROM ERP: ", body);
+
+  if (globalIO) {
+    // If specific event targeting is needed
+    const event = body.event || "erp-notification";
+    const data = body.data || body;
+
+    globalIO.emit(event, data);
+    res.status(200).send("ERP message broadcast successfully");
+    console.log("Successfully emitted ERP data");
+  } else {
+    console.log("Socket connection not established yet. Queuing message...");
+    messageQueue.push({ event: body.event || "erp-notification", data: body });
+    res.status(200).send("ERP message queued successfully");
   }
 });
 
