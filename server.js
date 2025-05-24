@@ -172,7 +172,7 @@ io.on("connection", (socket) => {
   }
 
   socket.on("disconnect", () => {
-    console.log("A user disconnected: " + socket.id);
+    // console.log("A user disconnected: " + socket.id);
   });
 });
 
@@ -233,6 +233,112 @@ app.post("/pnrs-notifications", (req, res) => {
     messageQueue.push({ event: "notifications", data: body });
     res.status(200).send("Message queued successfully");
   }
+});
+
+// ERP ENDPOINT
+app.post("/erp", (req, res) => {
+  const body = req.body;
+
+  if (globalIO) {
+    // Target socket event
+    const event = body.data.event;
+
+    // Data to be sent to all listener
+    const data = body.data.data;
+
+    globalIO.emit("erp-notifications", {
+      data: {
+        // event: "erp-notifications",
+        data: {
+          id: 1,
+          message: "🔔 You have a new notification!",
+          timestamp: "2025-05-22T14:00:00Z",
+        },
+      },
+    });
+
+    res.status(200).send("Message triggered successfully");
+  } else {
+    console.log("Socket connection not established yet. Queuing message...");
+    messageQueue.push({ event: "notifications", data: body });
+    res.status(200).send("Message queued successfully");
+  }
+});
+
+io.on("connection", (socket) => {
+  console.log("A user connected");
+  globalIO = io;
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
+  });
+
+  // Listen for erp-notifications sent from the client
+  socket.emit("erp-notifications-2384", {
+    data: {
+      id: 1,
+      message: "📢 Test notification from nodejs",
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+// ERP EDITING
+const activeUser = new Map();
+
+io.on("connection", (socket) => {
+  globalIO = io;
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
+  });
+
+  socket.on("register-user", ({ userId, name }) => {
+    activeUser.set(userId, {
+      name: name,
+      editing: true,
+      devices: new Set([socket.id]),
+    });
+
+    // Send signal to all except for the editor
+    socket.broadcast.emit("editing", {
+      editable: false,
+      editorId: userId,
+      editorName: name,
+    });
+  });
+
+  socket.on("authenticate", ({ id }) => {
+    const user = activeUser.entries().next().value;
+
+    if (user) {
+      const [userId, { name }] = user;
+
+      socket.emit("editing", {
+        editable: userId === id,
+        editorId: userId,
+        editorName: name,
+      });
+    }
+  });
+
+  // rename to remove-user
+  socket.on("logout", ({ userId, name }) => {
+    if (activeUser.has(userId)) {
+      const user = activeUser.get(userId);
+
+      console.log(`User ${user.name} logged out from all devices`);
+
+      activeUser.delete(userId); // Remove user from activeUser
+    }
+
+    // Send signal to all except for the editor
+    socket.broadcast.emit("editing", {
+      editable: true,
+      editorId: null,
+      editorName: null,
+    });
+  });
 });
 
 server.listen(port, () => {
