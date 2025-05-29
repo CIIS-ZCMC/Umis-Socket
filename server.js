@@ -303,6 +303,7 @@ io.on("connection", (socket) => {
     // Send signal to all except for the editor
     socket.broadcast.emit("editing", {
       editable: false,
+      showEdit: false,
       editorId: userId,
       editorName: name,
     });
@@ -310,12 +311,11 @@ io.on("connection", (socket) => {
 
   socket.on("authenticate", ({ id }) => {
     const user = activeUser.entries().next().value;
-
     if (user) {
       const [userId, { name }] = user;
-
       socket.emit("editing", {
         editable: userId === id,
+        showEdit: userId === id,
         editorId: userId,
         editorName: name,
       });
@@ -335,6 +335,7 @@ io.on("connection", (socket) => {
     // Send signal to all except for the editor
     socket.broadcast.emit("editing", {
       editable: true,
+      showEdit: false,
       editorId: null,
       editorName: null,
     });
