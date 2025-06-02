@@ -288,7 +288,6 @@ const activeUser = new Map();
 
 io.on("connection", (socket) => {
   globalIO = io;
-
   socket.on("disconnect", () => {
     console.log("User disconnected");
   });
@@ -299,7 +298,7 @@ io.on("connection", (socket) => {
       editing: true,
       devices: new Set([socket.id]),
     });
-
+    console.log(`${name} is now ediitng the document`);
     // Send signal to all except for the editor
     socket.broadcast.emit("editing", {
       editable: false,
@@ -308,7 +307,6 @@ io.on("connection", (socket) => {
       editorName: name,
     });
   });
-
   socket.on("authenticate", ({ id }) => {
     const user = activeUser.entries().next().value;
     if (user) {
@@ -321,17 +319,13 @@ io.on("connection", (socket) => {
       });
     }
   });
-
   // rename to remove-user
   socket.on("logout", ({ userId, name }) => {
     if (activeUser.has(userId)) {
       const user = activeUser.get(userId);
-
       console.log(`User ${user.name} logged out from all devices`);
-
       activeUser.delete(userId); // Remove user from activeUser
     }
-
     // Send signal to all except for the editor
     socket.broadcast.emit("editing", {
       editable: true,
