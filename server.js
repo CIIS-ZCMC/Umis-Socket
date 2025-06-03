@@ -284,7 +284,7 @@ io.on("connection", (socket) => {
 });
 
 // ERP EDITING
-const activeUser = new Map();
+const activeEditors = new Map();
 
 io.on("connection", (socket) => {
   globalIO = io;
@@ -293,52 +293,59 @@ io.on("connection", (socket) => {
     console.log("User disconnected");
   });
 
-  socket.on("register-user", ({ userId, name }) => {
-    activeUser.set(userId, {
-      name: name,
-      editing: true,
-      devices: new Set([socket.id]),
-    });
+  socket.on("register-user", ({ userId, name, area }) => {
+    console.log(`${name} entered the room ${area}`);
+    socket.join(area);
+  });
 
-    // Send signal to all except for the editor
-    socket.broadcast.emit("editing", {
+  socket.on("start-edit", ({ userId, name, area }) => {
+    activeEditors.set(area, { userId, name });
+    console.log(`${name} started editing in ${area}`);
+
+    io.in(area)
+      .allSockets()
+      .then((sockets) => {
+        console.log(`Sockets in area "${area}":`, Array.from(sockets));
+      });
+
+    socket.to(area).emit("editing", {
       editable: false,
       showEdit: false,
       editorId: userId,
       editorName: name,
     });
+
+    // Optional: store info for disconnect cleanup
+    socket.data.area = area;
+    socket.data.userId = userId;
   });
 
-  socket.on("authenticate", ({ id }) => {
-    const user = activeUser.entries().next().value;
-    if (user) {
-      const [userId, { name }] = user;
+  socket.on("authenticate", ({ id, area }) => {
+    const editor = activeEditors.get(area);
+
+    if (editor) {
       socket.emit("editing", {
-        editable: userId === id,
-        showEdit: userId === id,
-        editorId: userId,
-        editorName: name,
+        editable: editor.userId === id,
+        showEdit: editor.userId === id,
+        editorId: editor.userId,
+        editorName: editor.name,
       });
     }
   });
 
   // rename to remove-user
-  socket.on("logout", ({ userId, name }) => {
-    if (activeUser.has(userId)) {
-      const user = activeUser.get(userId);
-
-      console.log(`User ${user.name} logged out from all devices`);
-
-      activeUser.delete(userId); // Remove user from activeUser
+  socket.on("stop-edit", ({ userId, area }) => {
+    const editor = activeEditors.get(area);
+    if (editor && editor.userId === userId) {
+      activeEditors.delete(area);
+      console.log(`User ${userId} stopped editing in ${area}`);
+      socket.to(area).emit("editing", {
+        editable: true,
+        showEdit: false,
+        editorId: null,
+        editorName: null,
+      });
     }
-
-    // Send signal to all except for the editor
-    socket.broadcast.emit("editing", {
-      editable: true,
-      showEdit: false,
-      editorId: null,
-      editorName: null,
-    });
   });
 });
 
