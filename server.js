@@ -298,7 +298,6 @@ const activeEditors = new Map();
 
 io.on("connection", (socket) => {
   globalIO = io;
-
   socket.on("disconnect", () => {
     console.log("User disconnected");
   });
@@ -342,7 +341,6 @@ io.on("connection", (socket) => {
       });
     }
   });
-
   // rename to remove-user
   socket.on("stop-edit", ({ userId, area }) => {
     const editor = activeEditors.get(area);
