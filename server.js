@@ -165,6 +165,16 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ERP events
+  socket.on("erp-notification", (data) => {
+    if (socket) {
+      socket.broadcast.emit("erp-notification", data);
+      console.log("Broadcasting ERP notification data");
+    } else {
+      console.log("Socket is undefined");
+    }
+  });
+
   while (messageQueue.length > 0) {
     console.log("Queue Task Trigered.");
     const queuedMessage = messageQueue.shift();
@@ -212,7 +222,7 @@ app.post("/pr-monitoring", (req, res) => {
   }
 });
 
-// PR MONITORING END POINT
+// PNRS MONITORING END POINT
 app.post("/pnrs-notifications", (req, res) => {
   const body = req.body;
   console.log("DATA RECEIVE FROM PNRS: ", body);
