@@ -8,6 +8,7 @@ const cors = require("cors");
 // const Biolog = require("./models/Biolog");
 
 const port = process.env.SERVER_PORT ?? 3025;
+const host = process.env.SERVER_HOST ?? "192.168.3.121";
 const app = express();
 const server = http.createServer(app);
 
@@ -22,6 +23,7 @@ const io = socketIo(server, {
       process.env.ORIGIN_PORTAL_CLIENT,
       process.env.ORIGIN_PR_MONITORING_CLIENT,
       process.env.ORIGIN_PR_MONITORING_SERVER,
+      process.env.ORIGIN_ERP_CLIENT,
       process.env.ORIGIN_SERVER,
     ], // Replace with your client's origin
     methods: ["GET", "POST"], // Add allowed HTTP methodsc
@@ -358,5 +360,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Server is running on http://${host}:${port}`);
 });
