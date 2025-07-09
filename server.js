@@ -236,48 +236,33 @@ app.post("/pnrs-notifications", (req, res) => {
 });
 
 // ERP ENDPOINT
-app.post("/erp", (req, res) => {
+app.post("/erp-notifications", (req, res) => {
   const body = req.body;
-
+  console.log("DATA RECEIVED FROM ERP: ", body);
   if (globalIO) {
-    // Target socket event
-    const event = body.data.event;
-
-    // Data to be sent to all listener
-    const data = body.data.data;
-
-    globalIO.emit("erp-notifications", {
-      data: {
-        // event: "erp-notifications",
-        data: {
-          id: 1,
-          message: "🔔 You have a new notification!",
-          timestamp: "2025-05-22T14:00:00Z",
-        },
-      },
-    });
-
-    res.status(200).send("Message triggered successfully");
+    // If specific event targeting is needed
+    const event = body.event || "erp-notification";
+    const data = body.data || body;
+    globalIO.emit(event, data);
+    res.status(200).send("ERP message broadcast successfully");
+    console.log("Successfully emitted ERP data");
   } else {
     console.log("Socket connection not established yet. Queuing message...");
-    messageQueue.push({ event: "notifications", data: body });
-    res.status(200).send("Message queued successfully");
+    messageQueue.push({ event: body.event || "erp-notification", data: body });
+    res.status(200).send("ERP message queued successfully");
   }
 });
-
 io.on("connection", (socket) => {
   console.log("A user connected");
   globalIO = io;
-
   socket.on("disconnect", () => {
     console.log("User disconnected");
   });
-
   // Listen for erp-notifications sent from the client
   socket.emit("erp-notifications-2384", {
     data: {
       id: 1,
-      message: "📢 Test notification from nodejs",
+      message: ":loudspeaker: Test notification from nodejs",
       timestamp: new Date().toISOString(),
     },
   });
