@@ -8,7 +8,7 @@ const cors = require("cors");
 // const Biolog = require("./models/Biolog");
 
 const port = process.env.SERVER_PORT ?? 3025;
-const host = process.env.SERVER_HOST ?? "192.168.3.121";
+const host = process.env.SERVER_HOST ?? "localhost";
 const app = express();
 const server = http.createServer(app);
 
@@ -41,12 +41,69 @@ app.use(express.json());
 app.use(cors(corsOptions));
 app.use(express.urlencoded({ extended: true }));
 
+// PPMP → per-row locks
+// key: `${ppmpId}:${rowId}`
+const ppmpEditors = new Map();
+
+// AOP → per-document lock
+// key: aopId
+const aopObjectiveEditors = new Map();
+const aopActivityEditors = new Map();
+const onlineUsers = {}; // userId → socket.id
+
 io.on("connection", (socket) => {
   console.log("A user connected");
   globalIO = io;
 
+  socket.on("register-user", ({ userId }) => {
+    onlineUsers[userId] = socket.id;
+    console.log(`User ${userId} registered on socket ${socket.id}`);
+  });
+
+  // === DISCONNECT HANDLER ===
   socket.on("disconnect", () => {
-    console.log("User disconnected");
+    console.log("User disconnected:", socket.id);
+
+    // === AOP OBJECTIVE CLEANUP ===
+    const objectiveId = socket.data.aopObjectiveId;
+    const aopId = socket.data.aopId;
+    const aopActivityKey = socket.data.aopActivityKey;
+
+    if (objectiveId && aopObjectiveEditors.has(objectiveId)) {
+      aopObjectiveEditors.delete(objectiveId);
+      socket
+        .to(`aop:objective:${objectiveId}`)
+        .emit("aop:unlock", { objectiveId });
+      socket.to(`aop:${aopId}`).emit("aop:editing-stopped", { objectiveId });
+    }
+
+    if (aopActivityKey && aopActivityEditors.has(aopActivityKey)) {
+      const editor = aopActivityEditors.get(aopActivityKey);
+      aopActivityEditors.delete(aopActivityKey);
+
+      socket.to(`aop:activity:${aopActivityKey}`).emit("aop:activity-unlock", {
+        aopId: editor.aopId,
+        objectiveId: editor.objectiveId,
+        activityId: editor.activityId,
+      });
+
+      socket.to(`aop:${aopId}`).emit("aop:activity-editing-stopped", {
+        aopId: editor.aopId,
+        objectiveId: editor.objectiveId,
+        activityId: editor.activityId,
+      });
+    }
+
+    // === PPMP ROW CLEANUP ===
+    for (let [key, editor] of ppmpEditors.entries()) {
+      if (editor.socketId === socket.id) {
+        ppmpEditors.delete(key);
+        const [ppmpId, rowId] = key.split(":");
+        socket
+          .to(`ppmp:${ppmpId}`)
+          .emit("ppmp:editing", { ppmpId, rowId, locked: false });
+      }
+    }
   });
 
   // FREEDOM WALL
@@ -177,15 +234,251 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("ppmp:join", ({ ppmpId }) => {
+    socket.join(`ppmp:${ppmpId}`);
+    console.log(`Socket ${socket.id} joined room ppmp:${ppmpId}`);
+
+    // 🔁 Rehydrate existing locks for this PPMP
+    for (const [key, editor] of ppmpEditors.entries()) {
+      const [lockedPpmpId, rowId] = key.split(":");
+
+      if (lockedPpmpId === String(ppmpId)) {
+        socket.emit("ppmp:lock", {
+          rowId,
+          editorId: editor.userId,
+          editorName: editor.name,
+        });
+      }
+    }
+  });
+
+  // Leave a PPMP room
+  socket.on("ppmp:leave", ({ ppmpId }) => {
+    socket.leave(`ppmp:${ppmpId}`);
+    console.log(`Socket ${socket.id} left room ppmp:${ppmpId}`);
+  });
+
+  // Start editing a row
+  socket.on("ppmp:start-edit", ({ ppmpId, rowId, userId, name }) => {
+    const key = `${ppmpId}:${rowId}`;
+    const existing = ppmpEditors.get(key);
+
+    // 🚫 Locked by someone else → reject only this socket
+    if (existing && existing.userId !== userId) {
+      socket.emit("ppmp:locked", {
+        rowId,
+        editorId: existing.userId,
+        editorName: existing.name,
+      });
+      return;
+    }
+
+    // 🔒 Lock row
+    ppmpEditors.set(key, { userId, name });
+
+    // 🔒 Broadcast lock state
+    socket.to(`ppmp:${ppmpId}`).emit("ppmp:lock", {
+      rowId,
+      editorId: userId,
+      editorName: name,
+    });
+
+    // 🔔 Editing notification
+    socket.to(`ppmp:${ppmpId}`).emit("ppmp:editing", {
+      rowId,
+      editorName: name,
+    });
+  });
+
+  // Stop editing a row
+  socket.on("ppmp:stop-edit", ({ ppmpId, rowId, userId }) => {
+    const key = `${ppmpId}:${rowId}`;
+    const editor = ppmpEditors.get(key);
+
+    if (!editor || editor.userId !== userId) return;
+
+    // 🔓 Unlock row
+    ppmpEditors.delete(key);
+
+    // 🔓 Broadcast unlock
+    socket.to(`ppmp:${ppmpId}`).emit("ppmp:unlock", {
+      rowId,
+    });
+
+    // 🔔 Editing stopped notification
+    socket.to(`ppmp:${ppmpId}`).emit("ppmp:editing-stopped", {
+      rowId,
+    });
+  });
+
+  // Helper to generate a unique activity lock key
+  const activityKey = (aopId, objectiveId, activityId) =>
+    `${aopId}:${objectiveId}:${activityId}`;
+  /* =========================
+     AOP DOCUMENT EDITING
+  ========================= */
+  socket.on("aop:register", ({ aopId }) => {
+    socket.join(`aop:${aopId}`);
+    socket.data.aopId = aopId;
+
+    // 🔔 Notify user of already locked objectives when they join
+    for (const [objectiveId, editor] of aopObjectiveEditors.entries()) {
+      if (editor.aopId === aopId) {
+        socket.emit("aop:locked", {
+          objectiveId,
+          editorId: editor.userId,
+          editorName: editor.name,
+          aopId: editor.aopId,
+        });
+      }
+    }
+
+    // 🔔 Locked activities
+    for (const [activityId, editor] of aopActivityEditors.entries()) {
+      if (editor.aopId === aopId) {
+        socket.emit("aop:activity-locked", {
+          aopId,
+          objectiveId: editor.objectiveId,
+          activityId: editor.activityId,
+          editorId: editor.userId,
+          editorName: editor.name,
+        });
+      }
+    }
+  });
+
+  socket.on("aop:start-edit", ({ aopId, objectiveId, userId, name }) => {
+    const existing = aopObjectiveEditors.get(objectiveId);
+
+    if (existing && existing.userId !== userId) {
+      socket.emit("aop:locked", {
+        objectiveId,
+        editorId: existing.userId,
+        editorName: existing.name,
+        aopId: existing.aopId,
+      });
+      return;
+    }
+
+    aopObjectiveEditors.set(objectiveId, { userId, name, aopId });
+    socket.join(`aop:objective:${objectiveId}`);
+
+    // 🔒 Lock specific objective for others in the room
+    socket.to(`aop:objective:${objectiveId}`).emit("aop:lock", {
+      objectiveId,
+      editorId: userId,
+      editorName: name,
+    });
+
+    // 🔔 Notify everyone in the AOP that this objective is being edited
+    socket.to(`aop:${aopId}`).emit("aop:editing", {
+      objectiveId,
+      editorName: name,
+    });
+
+    socket.data.aopObjectiveId = objectiveId;
+    socket.data.aopId = aopId;
+  });
+
+  socket.on("aop:stop-edit", ({ aopId, objectiveId, userId }) => {
+    const editor = aopObjectiveEditors.get(objectiveId);
+
+    if (editor && editor.userId === userId) {
+      aopObjectiveEditors.delete(objectiveId);
+
+      socket.to(`aop:objective:${objectiveId}`).emit("aop:unlock", {
+        objectiveId,
+      });
+
+      socket.to(`aop:${aopId}`).emit("aop:editing-stopped", {
+        objectiveId,
+      });
+    }
+  });
+
+  socket.on(
+    "aop:activity:start-edit",
+    ({ aopId, objectiveId, activityId, userId, name }) => {
+      // ✅ CREATE THE KEY
+      const key = activityKey(aopId, objectiveId, activityId);
+
+      const existing = aopActivityEditors.get(key);
+
+      if (existing && existing.userId !== userId) {
+        socket.emit("aop:activity-locked", {
+          aopId,
+          objectiveId,
+          activityId,
+          editorId: existing.userId,
+          editorName: existing.name,
+        });
+        return;
+      }
+
+      // ✅ STORE USING THE SAME KEY
+      aopActivityEditors.set(key, {
+        userId,
+        name,
+        aopId,
+        objectiveId,
+        activityId,
+      });
+
+      // ✅ JOIN THE CORRECT ROOM
+      socket.join(`aop:activity:${key}`);
+
+      // 🔒 Lock activity for others
+      socket.to(`aop:activity:${key}`).emit("aop:activity-lock", {
+        aopId,
+        objectiveId,
+        activityId,
+        editorId: userId,
+        editorName: name,
+      });
+
+      // 🔔 Notify AOP room
+      socket.to(`aop:${aopId}`).emit("aop:activity-editing", {
+        aopId,
+        objectiveId,
+        activityId,
+        editorName: name,
+      });
+
+      // ✅ SAVE FOR DISCONNECT CLEANUP
+      socket.data.aopActivityKey = key;
+      socket.data.aopId = aopId;
+    },
+  );
+
+  socket.on(
+    "aop:activity:stop-edit",
+    ({ aopId, objectiveId, activityId, userId }) => {
+      const key = activityKey(aopId, objectiveId, activityId);
+      const editor = aopActivityEditors.get(key);
+
+      if (editor && editor.userId === userId) {
+        aopActivityEditors.delete(key);
+
+        socket.to(`aop:activity:${key}`).emit("aop:activity-unlock", {
+          aopId,
+          objectiveId,
+          activityId,
+        });
+
+        socket.to(`aop:${aopId}`).emit("aop:activity-editing-stopped", {
+          aopId,
+          objectiveId,
+          activityId,
+        });
+      }
+    },
+  );
+
   while (messageQueue.length > 0) {
     console.log("Queue Task Trigered.");
     const queuedMessage = messageQueue.shift();
     globalIO.emit(queuedMessage.event, queuedMessage.data);
   }
-
-  socket.on("disconnect", () => {
-    // console.log("A user disconnected: " + socket.id);
-  });
 });
 
 app.post("/notification", (req, res) => {
@@ -248,6 +541,7 @@ app.post("/pnrs-notifications", (req, res) => {
 });
 
 // ERP ENDPOINT
+// Send notification to a specific user
 app.post("/erp-notifications", (req, res) => {
   const body = req.body;
   console.log("DATA RECEIVED FROM ERP: ", body);
@@ -265,87 +559,31 @@ app.post("/erp-notifications", (req, res) => {
   }
 });
 
-io.on("connection", (socket) => {
-  console.log("A user connected");
-  globalIO = io;
+// app.post("/erp", (req, res) => {
+//   const body = req.body;
+//   // body.data should include userId and notification payload
+//   const userId = body.data.userId;
+//   const notificationData = body.data.notification;
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
+//   if (!userId || !notificationData) {
+//     return res.status(400).send("Missing userId or notification data");
+//   }
 
-  // Listen for erp-notifications sent from the client
-  socket.emit("erp-notifications-2384", {
-    data: {
-      id: 1,
-      message: "📢 Test notification from nodejs",
-      timestamp: new Date().toISOString(),
-    },
-  });
-});
+//   if (globalIO) {
+//     // Emit directly to the specific user
+//     globalIO.emit(`erp-notification-${userId}`, notificationData);
 
-// ERP EDITING
-const activeEditors = new Map();
-
-io.on("connection", (socket) => {
-  globalIO = io;
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
-
-  socket.on("register-user", ({ userId, name, area }) => {
-    console.log(`${name} entered the room ${area}`);
-    socket.join(area);
-  });
-
-  socket.on("start-edit", ({ userId, name, area }) => {
-    activeEditors.set(area, { userId, name });
-    console.log(`${name} started editing in ${area}`);
-
-    io.in(area)
-      .allSockets()
-      .then((sockets) => {
-        console.log(`Sockets in area "${area}":`, Array.from(sockets));
-      });
-
-    socket.to(area).emit("editing", {
-      editable: false,
-      showEdit: false,
-      editorId: userId,
-      editorName: name,
-    });
-
-    // Optional: store info for disconnect cleanup
-    socket.data.area = area;
-    socket.data.userId = userId;
-  });
-
-  socket.on("authenticate", ({ id, area }) => {
-    const editor = activeEditors.get(area);
-
-    if (editor) {
-      socket.emit("editing", {
-        editable: editor.userId === id,
-        showEdit: editor.userId === id,
-        editorId: editor.userId,
-        editorName: editor.name,
-      });
-    }
-  });
-  // rename to remove-user
-  socket.on("stop-edit", ({ userId, area }) => {
-    const editor = activeEditors.get(area);
-    if (editor && editor.userId === userId) {
-      activeEditors.delete(area);
-      console.log(`User ${userId} stopped editing in ${area}`);
-      socket.to(area).emit("editing", {
-        editable: true,
-        showEdit: false,
-        editorId: null,
-        editorName: null,
-      });
-    }
-  });
-});
+//     console.log("ERP notification sent to user", userId, notificationData);
+//     res.status(200).send("Notification sent successfully");
+//   } else {
+//     console.log("Socket not ready, queuing message...");
+//     messageQueue.push({
+//       event: `erp-notification-${userId}`,
+//       data: notificationData,
+//     });
+//     res.status(200).send("Notification queued successfully");
+//   }
+// });
 
 server.listen(port, () => {
   console.log(`Server is running on http://${host}:${port}`);
