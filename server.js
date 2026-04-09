@@ -23,6 +23,8 @@ const io = socketIo(server, {
       process.env.ORIGIN_PR_MONITORING_CLIENT,
       process.env.ORIGIN_PR_MONITORING_SERVER,
       process.env.ORIGIN_SERVER,
+      process.env.ORIGIN_ERP_CLIENT,
+      process.env.ORIGIN_ERP_SERVER,
     ], // Replace with your client's origin
     methods: ["GET", "POST"], // Add allowed HTTP methodsc
     credentials: true,
